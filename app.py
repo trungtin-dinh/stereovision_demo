@@ -1,6 +1,6 @@
 import tempfile
 from typing import Optional, Tuple
-
+import re
 import cv2
 import gradio as gr
 import numpy as np
@@ -12,6 +12,51 @@ MAX_ORB_MATCHES = 1200
 DEFAULT_POINT_COUNT = 40000
 DEFAULT_LEFT_URL = "https://vision.middlebury.edu/stereo/data/scenes2021/data/artroom1/im0.png"
 DEFAULT_RIGHT_URL = "https://vision.middlebury.edu/stereo/data/scenes2021/data/artroom1/im1.png"
+LATEX_DELIMITERS = [
+    {"left": "$$", "right": "$$", "display": True},
+    {"left": "$", "right": "$", "display": False},
+]
+
+with open("documentation_fr.md", "r", encoding="utf-8") as f:
+    DOCUMENTATION_fr = f.read()
+
+with open("documentation_en.md", "r", encoding="utf-8") as f:
+    DOCUMENTATION_en = f.read()
+
+
+def split_markdown_by_h2(markdown_text: str) -> dict[str, str]:
+    sections = {}
+    parts = re.split(r"(?m)^##\s+", markdown_text.strip())
+
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+
+        lines = part.splitlines()
+        title = lines[0].strip()
+
+        if title.lower() in {"table des matières", "table of contents"}:
+            continue
+
+        sections[title] = "## " + part
+
+    return sections
+
+
+DOC_FR_SECTIONS = split_markdown_by_h2(DOCUMENTATION_fr)
+DOC_EN_SECTIONS = split_markdown_by_h2(DOCUMENTATION_en)
+
+DOC_FR_TITLES = list(DOC_FR_SECTIONS.keys())
+DOC_EN_TITLES = list(DOC_EN_SECTIONS.keys())
+
+
+def load_doc_fr_section(title: str) -> str:
+    return DOC_FR_SECTIONS[title]
+
+
+def load_doc_en_section(title: str) -> str:
+    return DOC_EN_SECTIONS[title]
 
 
 def ensure_uint8_rgb(image: np.ndarray) -> np.ndarray:
@@ -639,101 +684,144 @@ def run_stereo_demo(
         ply_path,
     )
 
+with gr.Blocks(title="Noise Filtering Demo") as demo:
+    with gr.Tab("App"):
 
-with gr.Blocks() as demo:
-    gr.Markdown(
-        """
-### Test Stereo Image Sources
+        #gr.Markdown(
+        #    """
+        ### Test Stereo Image Sources
 
-- [Middlebury Stereo Datasets](https://vision.middlebury.edu/stereo/data/)
-- [KITTI Stereo 2015](https://www.cvlibs.net/datasets/kitti/eval_scene_flow.php?benchmark=stereo)
-- [ETH3D Stereo Benchmark](https://www.eth3d.net/)
-        """
-    )
+        #- [Middlebury Stereo Datasets](https://vision.middlebury.edu/stereo/data/)
+        #- [KITTI Stereo 2015](https://www.cvlibs.net/datasets/kitti/eval_scene_flow.php?benchmark=stereo)
+        #- [ETH3D Stereo Benchmark](https://www.eth3d.net/)
+        #    """
+        #)
 
-    with gr.Row():
-        left_image = gr.Image(label="Left Image", type="numpy", value=DEFAULT_LEFT_URL)
-        right_image = gr.Image(label="Right Image", type="numpy", value=DEFAULT_RIGHT_URL)
-
-    with gr.Accordion("Settings", open=True):
         with gr.Row():
-            focal_length_px = gr.Number(label="Focal Length (Pixels)", value=1200.0, precision=3)
-            baseline_m = gr.Number(label="Baseline (Meters)", value=0.10, precision=6)
-            auto_resize = gr.Checkbox(label="Automatically Resize For Speed", value=True)
+            left_image = gr.Image(label="Left Image", type="numpy", value=DEFAULT_LEFT_URL)
+            right_image = gr.Image(label="Right Image", type="numpy", value=DEFAULT_RIGHT_URL)
 
-        rectification_mode = gr.Radio(
-            label="Rectification Mode",
-            choices=["Auto", "Already Rectified", "Estimate And Rectify"],
-            value="Auto",
+        with gr.Accordion("Settings", open=True):
+            with gr.Row():
+                focal_length_px = gr.Number(label="Focal Length (Pixels)", value=1200.0, precision=3)
+                baseline_m = gr.Number(label="Baseline (Meters)", value=0.10, precision=6)
+                auto_resize = gr.Checkbox(label="Automatically Resize For Speed", value=True)
+
+            rectification_mode = gr.Radio(
+                label="Rectification Mode",
+                choices=["Auto", "Already Rectified", "Estimate And Rectify"],
+                value="Auto",
+            )
+
+            with gr.Row():
+                auto_rectification_threshold_px = gr.Number(
+                    label="Auto Rectification Threshold (Pixels)",
+                    value=2.0,
+                    precision=2,
+                )
+                point_count = gr.Number(label="Point Count", value=DEFAULT_POINT_COUNT, precision=0)
+
+            with gr.Row():
+                num_disparities = gr.Number(label="Num Disparities", value=256, precision=0)
+                block_size = gr.Number(label="Block Size", value=3, precision=0)
+
+            with gr.Row():
+                uniqueness_ratio = gr.Number(label="Uniqueness Ratio", value=5, precision=0)
+                speckle_window_size = gr.Number(label="Speckle Window Size", value=20, precision=0)
+                speckle_range = gr.Number(label="Speckle Range", value=4, precision=0)
+
+        run_button = gr.Button("Run Reconstruction")
+        results_markdown = gr.Markdown()
+
+        with gr.Tab("3D Point Cloud"):
+            point_cloud_output = gr.Plot(label="Interactive Point Cloud")
+
+        with gr.Tab("Depth And Disparity"):
+            with gr.Row():
+                depth_output = gr.Image(label="Depth Map")
+                disparity_output = gr.Image(label="Disparity Map")
+
+        with gr.Tab("Matches"):
+            matches_output = gr.Image(label="Orb Matches And Ransac Inliers")
+
+        with gr.Tab("Rectified Views"):
+            with gr.Row():
+                used_left_output = gr.Image(label="Used Left View")
+                used_right_output = gr.Image(label="Used Right View")
+
+        with gr.Tab("3D Export"):
+            ply_output = gr.File(label="Point Cloud (.ply)")
+
+        run_button.click(
+            fn=run_stereo_demo,
+            inputs=[
+                left_image,
+                right_image,
+                focal_length_px,
+                baseline_m,
+                auto_resize,
+                rectification_mode,
+                auto_rectification_threshold_px,
+                num_disparities,
+                block_size,
+                uniqueness_ratio,
+                speckle_window_size,
+                speckle_range,
+                point_count,
+            ],
+            outputs=[
+                results_markdown,
+                point_cloud_output,
+                depth_output,
+                disparity_output,
+                matches_output,
+                used_left_output,
+                used_right_output,
+                ply_output,
+            ],
         )
 
+    with gr.Tab("Documentation FR"):
         with gr.Row():
-            auto_rectification_threshold_px = gr.Number(
-                label="Auto Rectification Threshold (Pixels)",
-                value=2.0,
-                precision=2,
+            with gr.Column(scale=1):
+                doc_fr_buttons = []
+                for title in DOC_FR_TITLES:
+                    btn = gr.Button(title)
+                    doc_fr_buttons.append((btn, title))
+
+            with gr.Column(scale=3):
+                doc_fr_view = gr.Markdown(
+                    value=load_doc_fr_section(DOC_FR_TITLES[0]),
+                    latex_delimiters=LATEX_DELIMITERS
+                )
+
+        for btn, title in doc_fr_buttons:
+            btn.click(
+                lambda t=title: load_doc_fr_section(t),
+                inputs=None,
+                outputs=doc_fr_view,
             )
-            point_count = gr.Number(label="Point Count", value=DEFAULT_POINT_COUNT, precision=0)
 
+    with gr.Tab("Documentation EN"):
         with gr.Row():
-            num_disparities = gr.Number(label="Num Disparities", value=256, precision=0)
-            block_size = gr.Number(label="Block Size", value=3, precision=0)
+            with gr.Column(scale=1):
+                doc_en_buttons = []
+                for title in DOC_EN_TITLES:
+                    btn = gr.Button(title)
+                    doc_en_buttons.append((btn, title))
 
-        with gr.Row():
-            uniqueness_ratio = gr.Number(label="Uniqueness Ratio", value=5, precision=0)
-            speckle_window_size = gr.Number(label="Speckle Window Size", value=20, precision=0)
-            speckle_range = gr.Number(label="Speckle Range", value=4, precision=0)
+            with gr.Column(scale=3):
+                doc_en_view = gr.Markdown(
+                    value=load_doc_en_section(DOC_EN_TITLES[0]),
+                    latex_delimiters=LATEX_DELIMITERS
+                )
 
-    run_button = gr.Button("Run Reconstruction")
-    results_markdown = gr.Markdown()
-
-    with gr.Tab("3D Point Cloud"):
-        point_cloud_output = gr.Plot(label="Interactive Point Cloud")
-
-    with gr.Tab("Depth And Disparity"):
-        with gr.Row():
-            depth_output = gr.Image(label="Depth Map")
-            disparity_output = gr.Image(label="Disparity Map")
-
-    with gr.Tab("Matches"):
-        matches_output = gr.Image(label="Orb Matches And Ransac Inliers")
-
-    with gr.Tab("Rectified Views"):
-        with gr.Row():
-            used_left_output = gr.Image(label="Used Left View")
-            used_right_output = gr.Image(label="Used Right View")
-
-    with gr.Tab("3D Export"):
-        ply_output = gr.File(label="Point Cloud (.ply)")
-
-    run_button.click(
-        fn=run_stereo_demo,
-        inputs=[
-            left_image,
-            right_image,
-            focal_length_px,
-            baseline_m,
-            auto_resize,
-            rectification_mode,
-            auto_rectification_threshold_px,
-            num_disparities,
-            block_size,
-            uniqueness_ratio,
-            speckle_window_size,
-            speckle_range,
-            point_count,
-        ],
-        outputs=[
-            results_markdown,
-            point_cloud_output,
-            depth_output,
-            disparity_output,
-            matches_output,
-            used_left_output,
-            used_right_output,
-            ply_output,
-        ],
-    )
+        for btn, title in doc_en_buttons:
+            btn.click(
+                lambda t=title: load_doc_en_section(t),
+                inputs=None,
+                outputs=doc_en_view,
+            )
 
 
 if __name__ == "__main__":
