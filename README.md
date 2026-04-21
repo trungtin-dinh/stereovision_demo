@@ -1,6 +1,6 @@
 ---
 title: Stereovision Demo
-emoji: 😻
+emoji: 👀
 colorFrom: purple
 colorTo: yellow
 sdk: gradio
