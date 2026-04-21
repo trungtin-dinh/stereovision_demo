@@ -687,15 +687,15 @@ def run_stereo_demo(
 with gr.Blocks(title="Noise Filtering Demo") as demo:
     with gr.Tab("App"):
 
-        #gr.Markdown(
-        #    """
+        gr.Markdown(
+            """
         ### Test Stereo Image Sources
 
-        #- [Middlebury Stereo Datasets](https://vision.middlebury.edu/stereo/data/)
-        #- [KITTI Stereo 2015](https://www.cvlibs.net/datasets/kitti/eval_scene_flow.php?benchmark=stereo)
-        #- [ETH3D Stereo Benchmark](https://www.eth3d.net/)
-        #    """
-        #)
+        - [Middlebury Stereo Datasets](https://vision.middlebury.edu/stereo/data/)
+        - [KITTI Stereo 2015](https://www.cvlibs.net/datasets/kitti/eval_scene_flow.php?benchmark=stereo)
+        - [ETH3D Stereo Benchmark](https://www.eth3d.net/)
+            """
+        )
 
         with gr.Row():
             left_image = gr.Image(label="Left Image", type="numpy", value=DEFAULT_LEFT_URL)
