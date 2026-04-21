@@ -684,7 +684,7 @@ def run_stereo_demo(
         ply_path,
     )
 
-with gr.Blocks(title="Noise Filtering Demo") as demo:
+with gr.Blocks(title="Stereo Vision Demo") as demo:
     with gr.Tab("App"):
 
         gr.Markdown(
