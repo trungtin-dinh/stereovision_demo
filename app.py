@@ -1,4 +1,3 @@
-import os
 import tempfile
 from typing import Optional, Tuple
 
@@ -13,24 +12,6 @@ MAX_ORB_MATCHES = 1200
 DEFAULT_POINT_COUNT = 40000
 DEFAULT_LEFT_URL = "https://vision.middlebury.edu/stereo/data/scenes2021/data/artroom1/im0.png"
 DEFAULT_RIGHT_URL = "https://vision.middlebury.edu/stereo/data/scenes2021/data/artroom1/im1.png"
-
-def get_script_directory() -> str:
-    try:
-        return os.path.dirname(os.path.abspath(__file__))
-    except NameError:
-        return os.getcwd()
-
-
-def load_default_image(filename: str) -> Optional[np.ndarray]:
-    image_path = os.path.join(get_script_directory(), filename)
-    if not os.path.exists(image_path):
-        return None
-
-    image_bgr = cv2.imread(image_path, cv2.IMREAD_COLOR)
-    if image_bgr is None:
-        return None
-
-    return cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
 
 
 def ensure_uint8_rgb(image: np.ndarray) -> np.ndarray:
@@ -674,7 +655,7 @@ with gr.Blocks() as demo:
         left_image = gr.Image(label="Left Image", type="numpy", value=DEFAULT_LEFT_URL)
         right_image = gr.Image(label="Right Image", type="numpy", value=DEFAULT_RIGHT_URL)
 
-    with gr.Accordion("Camera And Stereo Settings", open=True):
+    with gr.Accordion("Settings", open=True):
         with gr.Row():
             focal_length_px = gr.Number(label="Focal Length (Pixels)", value=1200.0, precision=3)
             baseline_m = gr.Number(label="Baseline (Meters)", value=0.10, precision=6)
@@ -686,7 +667,6 @@ with gr.Blocks() as demo:
             value="Auto",
         )
 
-    with gr.Accordion("Advanced Settings", open=False):
         with gr.Row():
             auto_rectification_threshold_px = gr.Number(
                 label="Auto Rectification Threshold (Pixels)",
