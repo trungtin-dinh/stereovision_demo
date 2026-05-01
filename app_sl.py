@@ -919,6 +919,10 @@ def render_app_tab() -> None:
             st.warning("Point cloud export is unavailable for this pair.")
 
 
+def set_documentation_section(state_key: str, title: str) -> None:
+    st.session_state[state_key] = title
+
+
 def render_documentation_tab(language: str) -> None:
     if language == "fr":
         titles = DOC_FR_TITLES
@@ -929,15 +933,30 @@ def render_documentation_tab(language: str) -> None:
         sections = DOC_EN_SECTIONS
         state_key = "doc_en_title"
 
+    if not titles:
+        st.warning("No documentation section is available.")
+        return
+
+    if st.session_state.get(state_key) not in titles:
+        st.session_state[state_key] = titles[0]
+
+    selected_title = st.session_state[state_key]
     button_column, markdown_column = st.columns([1, 2])
 
     with button_column:
-        for title in titles:
-            if st.button(title, key=f"{state_key}_{title}"):
-                st.session_state[state_key] = title
+        for index, title in enumerate(titles):
+            is_selected = title == selected_title
+            st.button(
+                title,
+                key=f"{state_key}_{index}",
+                type="primary" if is_selected else "secondary",
+                use_container_width=True,
+                on_click=set_documentation_section,
+                args=(state_key, title),
+            )
 
     with markdown_column:
-        selected_title = st.session_state.get(state_key, titles[0] if titles else "Documentation")
+        selected_title = st.session_state[state_key]
         st.markdown(sections.get(selected_title, ""), unsafe_allow_html=False)
 
 
