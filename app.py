@@ -274,14 +274,14 @@ def validate_disparity_parameters(
 
     num_disparities = int(num_disparities)
     if num_disparities < 16:
-        raise gr.Error("Num Disparities must be at least 16.")
+        raise gr.Error("Number of Disparities must be at least 16.")
     if num_disparities > max_num_disparities:
         raise gr.Error(
-            f"Num Disparities must be less than the processed image width. "
+            f"Number of Disparities must be less than the processed image width. "
             f"For this image, the maximum allowed value is {max_num_disparities}."
         )
     if num_disparities % 16 != 0:
-        raise gr.Error("Num Disparities must be a multiple of 16.")
+        raise gr.Error("Number of Disparities must be a multiple of 16.")
 
     max_block_size = min(image_width, image_height)
     block_size = int(block_size)
@@ -684,7 +684,7 @@ def run_stereo_demo(
         ply_path,
     )
 
-with gr.Blocks(title="Stereo Vision Demo") as demo:
+with gr.Blocks(title="Stereo Vision") as demo:
     with gr.Tab("App"):
 
         gr.Markdown(
@@ -722,32 +722,32 @@ with gr.Blocks(title="Stereo Vision Demo") as demo:
                 point_count = gr.Number(label="Point Count", value=DEFAULT_POINT_COUNT, precision=0)
 
             with gr.Row():
-                num_disparities = gr.Number(label="Num Disparities", value=256, precision=0)
-                block_size = gr.Number(label="Block Size", value=3, precision=0)
+                num_disparities = gr.Number(label="Number of Disparities", value=256, precision=0, minimum=16, maximum=1024)
+                block_size = gr.Number(label="Block Size", value=3, precision=0, minimum=3, maximum=51)
 
             with gr.Row():
-                uniqueness_ratio = gr.Number(label="Uniqueness Ratio", value=5, precision=0)
-                speckle_window_size = gr.Number(label="Speckle Window Size", value=20, precision=0)
-                speckle_range = gr.Number(label="Speckle Range", value=4, precision=0)
+                uniqueness_ratio = gr.Number(label="Uniqueness Ratio", value=5, precision=0, minimum=0, maximum=100)
+                speckle_window_size = gr.Number(label="Speckle Window Size", value=100, precision=0, minimum=0, maximum=500)
+                speckle_range = gr.Number(label="Speckle Range", value=4, precision=0, minimum=0, maximum=64)
 
-        run_button = gr.Button("Run Reconstruction")
+        run_button = gr.Button("Run Reconstruction", variant="primary")
         results_markdown = gr.Markdown()
 
         with gr.Tab("3D Point Cloud"):
             point_cloud_output = gr.Plot(label="Interactive Point Cloud")
 
-        with gr.Tab("Depth And Disparity"):
+        with gr.Tab("Disparity and Depth"):
             with gr.Row():
                 depth_output = gr.Image(label="Depth Map")
                 disparity_output = gr.Image(label="Disparity Map")
 
-        with gr.Tab("Matches"):
-            matches_output = gr.Image(label="Orb Matches And Ransac Inliers")
+        with gr.Tab("Feature Matches"):
+            matches_output = gr.Image(label="ORB Matches and RANSAC Inliers")
 
-        with gr.Tab("Rectified Views"):
+        with gr.Tab("Rectified Images"):
             with gr.Row():
-                used_left_output = gr.Image(label="Used Left View")
-                used_right_output = gr.Image(label="Used Right View")
+                used_left_output = gr.Image(label="Left Image")
+                used_right_output = gr.Image(label="Right Image")
 
         with gr.Tab("3D Export"):
             ply_output = gr.File(label="Point Cloud (.ply)")
@@ -789,7 +789,7 @@ with gr.Blocks(title="Stereo Vision Demo") as demo:
                     btn = gr.Button(title)
                     doc_fr_buttons.append((btn, title))
 
-            with gr.Column(scale=3):
+            with gr.Column(scale=2):
                 doc_fr_view = gr.Markdown(
                     value=load_doc_fr_section(DOC_FR_TITLES[0]),
                     latex_delimiters=LATEX_DELIMITERS
@@ -810,7 +810,7 @@ with gr.Blocks(title="Stereo Vision Demo") as demo:
                     btn = gr.Button(title)
                     doc_en_buttons.append((btn, title))
 
-            with gr.Column(scale=3):
+            with gr.Column(scale=2):
                 doc_en_view = gr.Markdown(
                     value=load_doc_en_section(DOC_EN_TITLES[0]),
                     latex_delimiters=LATEX_DELIMITERS

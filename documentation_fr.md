@@ -1,6 +1,4 @@
-## Table des matières
-
-1. [Vue d'ensemble](#vue-densemble)
+## Table of Contents
 2. [La géométrie de la vision stéréo](#1-la-géométrie-de-la-vision-stéréo)
    - 2.1 [Modèle de caméra projective](#11-modèle-de-caméra-projective)
    - 2.2 [La baseline stéréo et la disparité](#12-la-baseline-stéréo-et-la-disparité)
@@ -30,15 +28,7 @@
 9. [Référence des paramètres](#8-référence-des-paramètres)
 10. [Références](#9-références)
 
----
 
-## Vue d'ensemble
-
-Cette application met en oeuvre un **pipeline complet de vision stéréo** : à partir d'une paire d'images prises depuis deux points de vue horizontalement décalés, elle estime une **carte de disparité** dense, la convertit en **carte de profondeur**, puis reconstruit un **nuage de points 3D** coloré pouvant être exploré de manière interactive ou exporté au format `.ply`.
-
-Le pipeline enchaîne plusieurs algorithmes classiques de vision par ordinateur, chacun fondé sur une géométrie bien établie et sur la théorie de l'optimisation. Ce document couvre chaque étape en profondeur.
-
----
 
 ## 1. La géométrie de la vision stéréo
 
@@ -211,11 +201,11 @@ Il s'agit d'un **problème d'étiquetage dense** dans un espace de recherche $W 
 
 ### 5.2 Coût de block matching
 
-Pour chaque pixel $(u, v)$ et chaque disparité candidate $d$, le **coût local d'appariement** est calculé sur un bloc carré de taille $b \times b$ centré en $(u, v)$ :
+Pour chaque pixel $(u, v)$ et chaque disparité candidate $d$, le **coût local d'appariement** est calculé sur un bloc carré de côté $b_s$ centré en $(u, v)$ :
 
 $$C_{\text{BM}}(u, v, d) = \sum_{(\Delta u, \Delta v) \in \mathcal{B}} \bigl|I_L(u + \Delta u,\; v + \Delta v) - I_R(u + \Delta u - d,\; v + \Delta v)\bigr|$$
 
-où $\mathcal{B} = \{-\lfloor b/2 \rfloor, \ldots, \lfloor b/2 \rfloor\}^2$. Il s'agit de la **somme des différences absolues (SAD)** sur la fenêtre d'appariement. La taille de bloc $b$ contrôle un compromis fondamental : les petits blocs préservent les frontières de profondeur nettes mais sont sensibles au bruit ; les grands blocs sont plus stables mais sur-lissent les transitions de disparité près des contours des objets.
+où $\mathcal{B} = \{-\lfloor b_s/2 \rfloor, \ldots, \lfloor b_s/2 \rfloor\}^2$. Il s'agit de la **somme des différences absolues (SAD)** sur la fenêtre d'appariement. La taille de bloc $b_s$ contrôle un compromis fondamental : les petits blocs préservent les frontières de profondeur nettes mais sont sensibles au bruit ; les grands blocs sont plus stables mais sur-lissent les transitions de disparité près des contours des objets.
 
 En pratique, l'implémentation SGBM d'OpenCV préfiltre chaque image par un gradient horizontal tronqué, limité à `preFilterCap = 31`, avant le calcul de SAD, ce qui améliore la robustesse aux différences globales d'illumination entre les deux caméras.
 
@@ -229,7 +219,7 @@ où $\mathcal{N}(u,v)$ désigne l'ensemble des voisins 4- ou 8-connexes, et où 
 
 $$P(d, d') = \begin{cases} 0 & \text{si } d = d' \\ P_1 & \text{si } |d - d'| = 1 \\ P_2 & \text{si } |d - d'| > 1 \end{cases}$$
 
-$P_1$ pénalise les petits incréments de disparité, ce qui modélise des surfaces à pente douce. $P_2 > P_1$ pénalise les grands sauts, permettant des discontinuités nettes aux frontières des objets tout en les décourageant dans les régions lisses. Dans cette application : $P_1 = 8 b^2$ et $P_2 = 32 b^2$, de sorte que le rapport $P_2/P_1 = 4$ reste constant quelle que soit la taille du bloc.
+$P_1$ pénalise les petits incréments de disparité, ce qui modélise des surfaces à pente douce. $P_2 > P_1$ pénalise les grands sauts, permettant des discontinuités nettes aux frontières des objets tout en les décourageant dans les régions lisses. Dans cette application : $P_1 = 8 b_s^2$ et $P_2 = 32 b_s^2$, de sorte que le rapport $P_2/P_1 = 4$ reste constant quelle que soit la taille du bloc.
 
 La minimisation exacte de $E(\mathbf{d})$ sur une grille 2D est NP-difficile. SGM en propose une approximation efficace selon le schéma suivant.
 
@@ -302,10 +292,10 @@ Chaque étape comporte des conditions d'échec explicites qui produisent des err
 | **Focal Length** (px) | $f$ | Intrinsèque caméra ; met $Z$ à l'échelle linéairement | 500 – 4000 px |
 | **Baseline** (m) | $b$ | Écartement des caméras ; met $Z$ à l'échelle linéairement | 0.05 – 1.0 m |
 | **Rectification threshold** (px) | $\delta$ | Résidu vertical médian maximal pour éviter la rectification | 1 – 5 px |
-| **Num Disparities** | $D_{\max}$ | Domaine de recherche $[0, D_{\max}]$ ; multiple de 16 | 64 – 512 |
-| **Block Size** | $b_s$ | Fenêtre SAD ; entier impair | 3 – 15 |
+| **Number of Disparities** | $D_{\max}$ | Domaine de recherche $[0, D_{\max}]$ ; multiple de 16 | 64 – 512 |
+| **Block Size** | $b_s$ | Côté de la fenêtre SAD ; entier impair | 3 – 15 |
 | **Uniqueness Ratio** | — | Marge de coût pour l'acceptation (%) | 5 – 15 |
-| **Speckle Window Size** | — | Aire minimale de composante connexe à conserver | 0 – 200 |
+| **Speckle Window Size** | — | Aire minimale de composante connexe à conserver | 0 – 300 |
 | **Speckle Range** | — | Variation maximale de disparité dans une composante conservée | 1 – 16 |
 
 **Remarque sur la mise à l'échelle de $Z$.** La profondeur reconstruite est proportionnelle à $f \cdot b$. Si la focale réelle et la baseline réelle sont inconnues, la structure relative de profondeur reste valide, mais les distances métriques seront faussées par un facteur d'échelle constant. Pour les jeux de données de référence comme Middlebury, KITTI ou ETH3D, les valeurs de calibration de référence sont fournies avec les données.

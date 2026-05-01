@@ -1,6 +1,5 @@
 ## Table of Contents
 
-1. [Overview](#overview)
 2. [The Stereo Vision Geometry](#1-the-stereo-vision-geometry)
    - 2.1 [Projective Camera Model](#11-projective-camera-model)
    - 2.2 [The Stereo Baseline and Disparity](#12-the-stereo-baseline-and-disparity)
@@ -29,16 +28,6 @@
 8. [Pipeline Summary](#7-pipeline-summary)
 9. [Parameters Reference](#8-parameters-reference)
 10. [References](#9-references)
-
----
-
-## Overview
-
-This application implements a complete **stereo vision pipeline**: given a pair of images taken from two horizontally offset viewpoints, it estimates a dense **disparity map**, converts it into a **depth map**, and reconstructs a colored **3D point cloud** that can be explored interactively or exported as a `.ply` file.
-
-The pipeline chains several classical computer vision algorithms, each grounded in well-established geometry and optimization theory. This document covers each stage in depth.
-
----
 
 ## 1. The Stereo Vision Geometry
 
@@ -211,11 +200,11 @@ This is a **dense labeling problem** on a $W \times H \times D_{\max}$ search sp
 
 ### 5.2 Block Matching Cost
 
-For each pixel $(u, v)$ and candidate disparity $d$, the **local matching cost** is computed over a square block of size $b \times b$ centered at $(u, v)$:
+For each pixel $(u, v)$ and candidate disparity $d$, the **local matching cost** is computed over a square block of side $b_s$ centered at $(u, v)$:
 
 $$C_{\text{BM}}(u, v, d) = \sum_{(\Delta u, \Delta v) \in \mathcal{B}} \bigl|I_L(u + \Delta u,\; v + \Delta v) - I_R(u + \Delta u - d,\; v + \Delta v)\bigr|$$
 
-where $\mathcal{B} = \{-\lfloor b/2 \rfloor, \ldots, \lfloor b/2 \rfloor\}^2$. This is the **Sum of Absolute Differences (SAD)** over the matching window. The block size $b$ controls a fundamental trade-off: small blocks preserve sharp depth boundaries but are sensitive to noise; large blocks are more stable but over-smooth disparity transitions near object edges.
+where $\mathcal{B} = \{-\lfloor b_s/2 \rfloor, \ldots, \lfloor b_s/2 \rfloor\}^2$. This is the **Sum of Absolute Differences (SAD)** over the matching window. The block size $b_s$ controls a fundamental trade-off: small blocks preserve sharp depth boundaries but are sensitive to noise; large blocks are more stable but over-smooth disparity transitions near object edges.
 
 In practice, OpenCV's SGBM pre-filters each image with a truncated horizontal gradient (clamped to `preFilterCap = 31`) before computing SAD, improving robustness to global illumination differences between the two cameras.
 
@@ -229,7 +218,7 @@ where $\mathcal{N}(u,v)$ is the set of 4- or 8-connected neighbors, and the pair
 
 $$P(d, d') = \begin{cases} 0 & \text{if } d = d' \\ P_1 & \text{if } |d - d'| = 1 \\ P_2 & \text{if } |d - d'| > 1 \end{cases}$$
 
-$P_1$ penalizes small disparity increments, modeling gently sloping surfaces. $P_2 > P_1$ penalizes large jumps, allowing sharp depth discontinuities at object boundaries but discouraging them in smooth regions. In this app: $P_1 = 8 b^2$ and $P_2 = 32 b^2$, so the ratio $P_2/P_1 = 4$ is fixed regardless of block size.
+$P_1$ penalizes small disparity increments, modeling gently sloping surfaces. $P_2 > P_1$ penalizes large jumps, allowing sharp depth discontinuities at object boundaries but discouraging them in smooth regions. In this app: $P_1 = 8 b_s^2$ and $P_2 = 32 b_s^2$, so the ratio $P_2/P_1 = 4$ is fixed regardless of block size.
 
 Exact minimization of $E(\mathbf{d})$ over a 2D grid is NP-hard (it is a submodular MRF, but with the full 8-connected graph and $D_{\max}$ labels, exact inference is intractable in real-time). SGM approximates it via the following scheme.
 
@@ -302,10 +291,10 @@ Each stage has explicit failure conditions that generate informative errors (ins
 | **Focal Length** (px) | $f$ | Camera intrinsic; scales $Z$ linearly | 500 – 4000 px |
 | **Baseline** (m) | $b$ | Camera separation; scales $Z$ linearly | 0.05 – 1.0 m |
 | **Rectification threshold** (px) | $\delta$ | Max median vertical residual to skip rectification | 1 – 5 px |
-| **Num Disparities** | $D_{\max}$ | Search range $[0, D_{\max}]$; multiple of 16 | 64 – 512 |
-| **Block Size** | $b_s$ | SAD window; odd integer | 3 – 15 |
+| **Number of Disparities** | $D_{\max}$ | Search range $[0, D_{\max}]$; multiple of 16 | 64 – 512 |
+| **Block Size** | $b_s$ | SAD window side length; odd integer | 3 – 15 |
 | **Uniqueness Ratio** | — | Cost margin for acceptance (%) | 5 – 15 |
-| **Speckle Window Size** | — | Min connected component area to keep | 0 – 200 |
+| **Speckle Window Size** | — | Min connected component area to keep | 0 – 300 |
 | **Speckle Range** | — | Max disparity variation within a kept component | 1 – 16 |
 
 **Note on $Z$ scaling.** The reconstructed depth is proportional to $f \cdot b$. If the true focal length and baseline are unknown, relative depth structure is still valid, but metric distances will be off by a constant scale factor. For benchmark datasets such as Middlebury, KITTI or ETH3D, ground-truth calibration values are provided with the data.
