@@ -716,6 +716,154 @@ def run_stereo_demo(
     }
 
 
+
+# -----------------------------------------------------------------------------
+# Header and personal links
+# -----------------------------------------------------------------------------
+PORTFOLIO_LINKS = [
+    {
+        "platform": "Streamlit",
+        "label": "trungtin-dinh",
+        "url": "https://share.streamlit.io/user/trungtin-dinh",
+        "icon_url": "https://cdn.simpleicons.org/streamlit/FF4B4B",
+    },
+    {
+        "platform": "GitHub",
+        "label": "trungtin-dinh",
+        "url": "https://github.com/trungtin-dinh",
+        "icon_url": "https://cdn.simpleicons.org/github/FFFFFF",
+    },
+    {
+        "platform": "LinkedIn",
+        "label": "Trung-Tin Dinh",
+        "url": "https://www.linkedin.com/in/trung-tin-dinh/",
+        "icon_url": "https://upload.wikimedia.org/wikipedia/commons/8/81/LinkedIn_icon.svg",
+    },
+    {
+        "platform": "Medium",
+        "label": "@trungtin.dinh",
+        "url": "https://medium.com/@trungtin.dinh",
+        "icon_url": "https://cdn.simpleicons.org/medium/FFFFFF",
+    },
+]
+
+
+def render_header() -> None:
+    links_html_parts = []
+
+    for item in PORTFOLIO_LINKS:
+        platform = item["platform"]
+        label = item["label"]
+        href = item["url"]
+        icon = item["icon_url"]
+        title = f"Open {platform}: {label}"
+
+        links_html_parts.append(
+            f'<a class="portfolio-link icon-only" '
+            f'href="{href}" '
+            f'target="_blank" '
+            f'rel="noopener noreferrer" '
+            f'title="{title}">'
+            f'<img src="{icon}" alt="{platform}">'
+            f'</a>'
+        )
+
+    links_html = "".join(links_html_parts)
+
+    st.markdown(
+        f"""
+        <style>
+        .app-header-wrapper {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-top: 0.35rem;
+            margin-bottom: 0.35rem;
+        }}
+
+        .app-header-title {{
+            font-size: 2.25rem;
+            font-weight: 700;
+            line-height: 1.15;
+            margin: 0;
+            padding: 0;
+        }}
+
+        .portfolio-links-container {{
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+            margin-top: 0.20rem;
+            margin-bottom: 0.45rem;
+        }}
+
+        .portfolio-link {{
+            height: 2.10rem;
+            min-width: 2.10rem;
+            border-radius: 0.55rem;
+            border: 1px solid rgba(250, 250, 250, 0.18);
+            background: rgba(250, 250, 250, 0.08);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            box-shadow: none;
+            transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+        }}
+
+        .portfolio-link:hover {{
+            transform: translateY(-1px);
+            border-color: rgba(255, 75, 75, 0.70);
+            background: rgba(255, 75, 75, 0.12);
+        }}
+
+        .portfolio-link.icon-only img {{
+            width: 1.20rem;
+            height: 1.20rem;
+            display: block;
+            object-fit: contain;
+        }}
+
+        @media (max-width: 700px) {{
+            .app-header-wrapper {{
+                align-items: flex-start;
+                flex-direction: column;
+            }}
+
+            .portfolio-links-container {{
+                justify-content: flex-start;
+            }}
+
+            .app-header-title {{
+                font-size: 1.85rem;
+            }}
+        }}
+        </style>
+
+        <div class="app-header-wrapper">
+            <div class="app-header-title">Stereovision Demo</div>
+            <div class="portfolio-links-container">{links_html}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_button_width_css() -> None:
+    st.markdown(
+        """
+        <style>
+        div.stButton > button {
+            width: 100%;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
 # -----------------------------------------------------------------------------
 # Streamlit UI
 # -----------------------------------------------------------------------------
@@ -770,7 +918,7 @@ def render_app_tab() -> None:
         with preview_right:
             st.image(right_image, caption="Right Image", use_container_width=True)
 
-    with st.expander("Settings", expanded=True):
+    with st.expander("Settings", expanded=False):
         row_1_col_1, row_1_col_2, row_1_col_3 = st.columns(3)
         with row_1_col_1:
             focal_length_px = st.number_input("Focal Length (Pixels)", min_value=0.000001, value=1200.0, step=10.0, format="%.3f")
@@ -848,7 +996,7 @@ def render_app_tab() -> None:
                 step=1,
             )
 
-    if st.button("Run Reconstruction", type="primary"):
+    if st.button("Run", type="primary", width="stretch"):
         try:
             with st.spinner("Running stereo reconstruction..."):
                 st.session_state.results = run_stereo_demo(
@@ -962,6 +1110,8 @@ def render_documentation_tab(language: str) -> None:
 
 def main() -> None:
     st.set_page_config(page_title="Stereo Vision", layout="wide")
+
+    render_header()
     initialize_state()
 
     tabs = st.tabs(["App", "Documentation FR", "Documentation EN"])
